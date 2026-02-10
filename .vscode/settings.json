@@ -1,0 +1,6 @@
+{
+    "python.defaultInterpreterPath": "/home/sunteng/.conda/envs/lain_rl/bin/python",
+
+    "python.terminal.activateEnvironment": true,
+    "python-envs.pythonProjects": [],
+}
