@@ -1,52 +1,120 @@
-# Isaac Gym Environments for Legged Robots 整理文档
-本文档完整保留原README核心信息、全部可执行命令，同时优化结构便于查阅使用。
+# HTDW4438_Isaacgym 
+**基于Leggedgym，用于高擎小型四足的训练仓库**
 
-## 仓库概述
-本仓库提供基于NVIDIA Isaac Gym训练ANYmal及其他足式机器人复杂地形行走能力的环境，完整覆盖机器人Sim-to-Real迁移所需全链路组件，包括：执行器网络、摩擦与质量随机化、带噪声观测、训练过程随机推力扰动等核心能力。
-- **维护者**：Nikita Rudin
-- **所属机构**：ETH Zurich 机器人系统实验室
-- **联系方式**：rudinn@ethz.ch
-
-## 重要公告（2024.01.09）
-随着NVIDIA官方技术栈从Isaac Gym向Isaac Sim迁移，本项目所有环境已全面迁移至[Isaac Lab](https://github.com/isaac-sim/IsaacLab)，后续本仓库仅提供有限更新与维护，强烈建议所有用户迁移至新框架开展开发工作。
-- Isaac Lab中本项目相关 locomotion 任务文档：[Locomotion Environments](https://isaac-sim.github.io/IsaacLab/main/source/overview/environments.html#locomotion)
+- 飞书安装文档[🎯 欢迎来到IsaacGym](https://wcn9j5638vrr.feishu.cn/wiki/Aq7mwJ0Zmi0e0TkquqDcNSHYnnf)
 
 ## 相关参考链接
 - 项目官网：https://leggedrobotics.github.io/legged_gym/
 - 核心论文：https://arxiv.org/abs/2109.11978
 
-## 一、完整安装步骤（含全部执行命令）
-### 前置环境要求
-推荐使用Python 3.8，兼容Python 3.6/3.7；需配套CUDA 11.3、Pytorch 1.10.0版本。
-
+## 一、完整安装步骤
+整体安装思路为：
+1. 安装支持 CUDA 的 NVIDIA 驱动
+2. 创建 Python 3.8 的conda环境。
+3. 安装CUDA
+4. 安装与 CUDA 版本匹配的 PyTorch。
+5. 安装Isaacgym
+6. 下载isacgym官方环境包
 ### 分步安装命令与操作
-1.  创建Python虚拟环境（Python 3.8 推荐），并激活环境
-2.  安装Pytorch 1.10.0 + CUDA 11.3 配套组件
+1.  安装支持 CUDA 的 NVIDIA 驱动
+   
     ```bash
-    pip3 install torch==1.10.0+cu113 torchvision==0.11.1+cu113 torchaudio==0.10.0+cu113 -f https://download.pytorch.org/whl/cu113/torch_stable.html
+    # 卸载所有NVIDIA相关包
+    sudo apt-get remove --purge '^nvidia-.*'
+    sudo apt-get autoremove
+    sudo apt-get autoclean
+
+    # 清理驱动模块残留
+    sudo rm -rf /lib/modules/$(uname -r)/kernel/drivers/video/nvidia.ko
+    sudo update-initramfs -u  # 更新启动镜像
+
+    # 确保驱动编译和加载所需的工具齐全：
+    sudo apt install build-essential dkms linux-headers-$(uname -r)
+
+    # 添加官方显卡驱动源
+    sudo add-apt-repository ppa:graphics-drivers/ppa
+    sudo apt update
+
+    # 安装535版本（相对比较稳定）
+    sudo apt install nvidia-driver-535
     ```
-3.  安装Isaac Gym
-    1.  从官网 https://developer.nvidia.com/isaac-gym 下载 Isaac Gym Preview 3（Preview 2 不兼容）
-    2.  执行安装命令
-        ```bash
-        cd isaacgym/python && pip install -e .
-        ```
-    3.  运行示例验证安装
-        ```bash
-        cd examples && python 1080_balls_of_solitude.py
-        ```
-    4.  故障排查参考：`isaacgym/docs/index.html`
-4.  安装rsl_rl（PPO算法实现，必须切换v1.0.2版本）
+
+2.  创建 Python 3.8 的conda环境
+   
+    ```bash
+    # 安装miniconda 
+    wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+    chmod +x Miniconda3-latest-Linux-x86_64.sh
+    ./Miniconda3-latest-Linux-x86_64.sh
+
+    # 创建并验证虚拟环境
+    conda create -n leggedgym python=3.8.10
+    # 进入环境
+    conda activate leggedgym
+
+    ```
+
+3.  安装CUDA
+    1. 首先进入CUDA官网：https://developer.nvidia.com/cuda-toolkit-archive
+    2. 我们以12.1为例：
+    wget https://developer.download.nvidia.com/compute/cuda/12.1.0/local_installers/cuda_12.1.0_530.30.02_linux.run
+    sudo sh cuda_12.1.0_530.30.02_linux.run
+4.  安装与 CUDA 版本匹配的 PyTorch
+   
+    ```bash
+    # 安装环境内cuda
+    conda activate leggedgym
+    conda install pytorch torchvision pytorch-cuda=12.1.0 -c pytorch -c nvidia
+
+    # 安装pytorch
+    sudo apt install python3-pip
+    pip install torchvision -i https://pypi.tuna.tsinghua.edu.cn/simple
+    pip install torch -i https://pypi.tuna.tsinghua.edu.cn/simple
+    pip install pyquaternion -i https://pypi.tuna.tsinghua.edu.cn/simple
+    pip install pyyaml -i https://pypi.tuna.tsinghua.edu.cn/simple
+    pip install pexpect -i https://pypi.tuna.tsinghua.edu.cn/simple
+    pip install matplotlib -i https://pypi.tuna.tsinghua.edu.cn/simple
+    pip install einops -i https://pypi.tuna.tsinghua.edu.cn/simple
+    pip install tqdm -i https://pypi.tuna.tsinghua.edu.cn/simple
+    pip install packaging -i https://pypi.tuna.tsinghua.edu.cn/simple
+    pip install h5py -i https://pypi.tuna.tsinghua.edu.cn/simple
+    pip install ipython -i https://pypi.tuna.tsinghua.edu.cn/simple
+    pip install getkey -i https://pypi.tuna.tsinghua.edu.cn/simple
+    pip install wandb -i https://pypi.tuna.tsinghua.edu.cn/simple
+    pip install chardet -i https://pypi.tuna.tsinghua.edu.cn/simple
+    pip install matplotlib -i https://pypi.tuna.tsinghua.edu.cn/simple
+    pip install numpy==1.23.2 -i https://pypi.tuna.tsinghua.edu.cn/simple
+    pip install h5py_cache -i https://pypi.tuna.tsinghua.edu.cn/simple
+    pip install opencv-python -i https://pypi.tuna.tsinghua.edu.cn/simple
+    pip install tensorboard -i https://pypi.tuna.tsinghua.edu.cn/simple
+    pip install onnxruntime
+    pip install mujoco-python-viewer
+
+    ```
+5.  安装Isaacgym
+    从官网 https://developer.nvidia.com/isaac-gym 下载 Isaac Gym Preview 4，下载解压即可
+
+6.  下载isacgym官方包环境
+   
+    ```bash
+    # 克隆仓库
+    git clone https://github.com/isaac-sim/IsaacGymEnvs.git
+    conda activate leggedgym 
+    pip install -e ./IsaacGymEnvs
+    ```
+
+7.  安装rsl_rl（PPO算法实现，必须切换v1.0.2版本）
     ```bash
     # 克隆仓库
     git clone https://github.com/leggedrobotics/rsl_rl
     # 切换指定版本并安装
     cd rsl_rl && git checkout v1.0.2 && pip install -e .
     ```
-5.  安装legged_gym本体
+
+8.  安装legged_gym本体
     ```bash
-    # 克隆本仓库
-    git clone <本仓库地址>
+    # 克隆仓库
+    git clone https://github.com/leggedrobotics/legged_gym
     # 执行可编辑模式安装
     cd legged_gym && pip install -e .
     ```
@@ -55,11 +123,11 @@
 1.  每个环境由两部分定义：
     - 环境文件：`legged_robot.py`，实现环境核心逻辑
     - 配置文件：`legged_robot_config.py`，包含两类配置类：环境参数类`LeggedRobotCfg`、训练参数类`LeggedRobotCfgPPo`
-2.  环境与配置类均支持继承机制，便于快速扩展新任务
+2.  环境与配置类均支持继承机制，便于快速扩展新任务，一般建议在各个机器人子类中设置。
 3.  配置文件`cfg`中，所有非零的奖励缩放系数，都会自动对应同名奖励函数，最终总奖励为所有激活奖励的加权和
 4.  任务必须通过`task_registry.register(name, EnvClass, EnvConfig, TrainConfig)`完成注册，注册入口为`envs/__init__.py`，也支持仓库外外部注册。
 
-## 三、核心使用方法（含全部执行命令）
+## 三、核心使用方法
 ### 1. 训练策略
 #### 基础训练命令
 ```bash
