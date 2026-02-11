@@ -3,7 +3,6 @@ import os
 
 import isaacgym
 from legged_gym.envs import *
-# 注意：这里去掉了 export_policy_as_onnx 的导入，避免调用错误的库函数
 from legged_gym.utils import  get_args, export_policy_as_jit, task_registry, Logger
 
 import numpy as np
@@ -20,8 +19,8 @@ def local_export_policy_as_onnx(actor_critic, path):
     else:
         model = actor_critic
 
-    # 创建虚拟输入 (Dummy Input) 用于追踪模型结构
-    # 假设输入维度适配你的 observation (通常自动适配权重维度)
+    # 创建虚拟输入用于追踪模型结构
+    # 输入维度适配 observation 
     dummy_input = torch.zeros(1, model[0].in_features, device=model[0].weight.device)
     
     # 确保目标文件夹存在
@@ -78,12 +77,12 @@ def play(args, x_vel=0.0, y_vel=0.0, yaw_vel=0.0):
         # 显式传入 train_path
         ppo_runner, train_cfg = task_registry.make_alg_runner(env=env, name=args.task, args=args, train_cfg=train_cfg, train_path=path)
     else:
-        # 如果没传参数，让它尝试自动寻找（虽然可能会报错）
+        # 如果没传参数，让它尝试自动寻找
         ppo_runner, train_cfg = task_registry.make_alg_runner(env=env, name=args.task, args=args, train_cfg=train_cfg)
 
     policy = ppo_runner.get_inference_policy(device=env.device)
     
-    # --- 关键修改：导出到你指定的目录 ---
+    # --- 导出到指定的目录 ---
     if EXPORT_POLICY:
         # 指定你的目标目录
         target_dir = '/home/sunteng/Documents/GitHub/HTDW4438_Isaacgym/onnx'
@@ -157,4 +156,3 @@ if __name__ == '__main__':
     MOVE_CAMERA = False
     args = get_args()
     play(args, x_vel=0.8, y_vel=0.0, yaw_vel=0.0)
-    
