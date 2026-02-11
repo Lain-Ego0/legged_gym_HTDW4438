@@ -56,7 +56,7 @@ class Sim2simCfg(A1RoughCfg):
     class sim_config:
         # print("{LEGGED_GYM_ROOT_DIR}",{LEGGED_GYM_ROOT_DIR})
 
-        mujoco_model_path = '/home/arx/isaac/legged_gym/resources/robots/a1/xml/scene.xml'
+        mujoco_model_path = '/home/sunteng/Documents/GitHub/HTDW4438_Isaacgym/resources/robots/a1/xml/scene.xml'
         
         sim_duration = 60.0
         dt = 0.005 #1Khz底层
