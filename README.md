@@ -57,8 +57,10 @@
 3.  安装CUDA
     1. 首先进入CUDA官网：https://developer.nvidia.com/cuda-toolkit-archive
     2. 我们以12.1为例：
+    ```bash
     wget https://developer.download.nvidia.com/compute/cuda/12.1.0/local_installers/cuda_12.1.0_530.30.02_linux.run
     sudo sh cuda_12.1.0_530.30.02_linux.run
+    ```
 4.  安装与 CUDA 版本匹配的 PyTorch
    
     ```bash
