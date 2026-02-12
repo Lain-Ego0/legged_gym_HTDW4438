@@ -36,10 +36,10 @@ class Cfg:
         cls.action_scale = config['action_scale']
         cls.cmd_scale = np.array(config['cmd_scale'], dtype=np.float32)
 
-        # # --- 新增以下读取逻辑 ---
-        # cls.ang_vel_scale = config.get('ang_vel_scale', 0.25)
-        # cls.dof_vel_scale = config.get('dof_vel_scale', 0.05)
-        # cls.lin_vel_scale = config.get('lin_vel_scale', 2.0)
+        # --- 新增以下读取逻辑 ---
+        cls.ang_vel_scale = config.get('ang_vel_scale', 0.25)
+        cls.dof_vel_scale = config.get('dof_vel_scale', 0.05)
+        cls.lin_vel_scale = config.get('lin_vel_scale', 2.0)
 
 # ===================== 2. 控制器函数 =====================
 def update_keyboard_command(window, cmd):
@@ -127,10 +127,21 @@ def run_simulation():
             omega = data.qvel[3:6]
             proj_g = quat_rotate_inverse(quat, np.array([0., 0., -1.]))
             
-            # 组合 obs (注意顺序需要与训练代码一致)
+            # # 组合 obs (注意顺序需要与训练代码一致)
+            # obs = np.concatenate([
+            #     omega, proj_g, cmd_vel * Cfg.cmd_scale, qj, dqj, last_action
+            # ]).astype(np.float32).reshape(1, -1)
+
+            # --- 乘以缩放因子 ---
             obs = np.concatenate([
-                omega, proj_g, cmd_vel * Cfg.cmd_scale, qj, dqj, last_action
+                omega * Cfg.ang_vel_scale,       # 乘以 0.25
+                proj_g,
+                cmd_vel * Cfg.cmd_scale,
+                qj,                              # 通常 scale 为 1.0
+                dqj * Cfg.dof_vel_scale,         # 乘以 0.05
+                last_action
             ]).astype(np.float32).reshape(1, -1)
+            # -------------------------------
 
             # 推理并更新动作
             raw_action = ort_session.run(None, {input_name: obs})[0][0]
