@@ -7,7 +7,7 @@ xml_path: "{LEGGED_GYM_ROOT_DIR}/resources/robots/htdw_4438/xml/scene.xml"
 simulation_duration: 60.0
 # 仿真步长
 simulation_dt: 0.005
-control_decimation: 2
+control_decimation: 4
 
 # 顺序为: [FL_hip, FL_thigh, FL_calf, FR_hip, FR_thigh, FR_calf, RL_hip, RL_thigh, RL_calf, RR_hip, RR_thigh, RR_calf]
 kps: [30.0, 30.0, 30.0, 30.0, 30.0, 30.0, 30.0, 30.0, 30.0, 30.0, 30.0, 30.0] 
