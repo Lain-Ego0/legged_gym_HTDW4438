@@ -15,6 +15,13 @@
 4. 安装与 CUDA 版本匹配的 PyTorch。
 5. 安装Isaacgym
 6. 下载isacgym官方环境包
+   
+- conda环境已经打包为HTDW4438.yml,可直接使用：
+
+    ```bash
+    conda env create -f HTDW4438.yml
+    ```
+
 ### 分步安装命令与操作
 1.  安装支持 CUDA 的 NVIDIA 驱动
    
