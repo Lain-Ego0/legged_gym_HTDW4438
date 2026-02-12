@@ -6,7 +6,7 @@ class Htdw4438Cfg(LeggedRobotCfg):
     # ==========================
     class env(LeggedRobotCfg.env):
         num_envs = 4096
-        num_observations = 235-187-3 # 减去线速度感知和地形高度
+        num_observations = 45 # 减去线速度感知和地形高度（235-187-3）
         num_privileged_obs = None # 标准 PPO 通常不需要显式的 privileged_obs (除非使用非对称 Actor-Critic)，如果为 None，则 privileged_obs = observations
         
         num_actions = 12
@@ -164,7 +164,8 @@ class Htdw4438Cfg(LeggedRobotCfg):
         dt = 0.005 
         substeps = 1 
         gravity = [0., 0., -9.81] 
-        up_axis = 1 
+        # up_axis = 1 
+        up_axis = 0
         class physx(LeggedRobotCfg.sim.physx):
             num_threads = 10
             solver_type = 1 
