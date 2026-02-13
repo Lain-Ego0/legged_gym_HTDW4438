@@ -99,9 +99,9 @@ def run_simulation():
 
     # 初始化位置
     data.qpos[7:] = Cfg.default_dof_pos
-    data.qpos[2] = 0.45 
+    data.qpos[2] = 0.15 # 初始化高度
     
-    # 启动相同的 Viewer
+    # 第三方 Viewer
     viewer = mujoco_viewer.MujocoViewer(model, data)
     
     cmd_vel = np.zeros(3, dtype=np.float32)
