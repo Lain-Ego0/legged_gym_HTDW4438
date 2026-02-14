@@ -3,10 +3,6 @@
 
 - 飞书安装文档[🎯 欢迎来到IsaacGym](https://wcn9j5638vrr.feishu.cn/wiki/Aq7mwJ0Zmi0e0TkquqDcNSHYnnf)
 
-## 相关参考链接
-- 项目官网：https://leggedrobotics.github.io/legged_gym/
-- 核心论文：https://arxiv.org/abs/2109.11978
-
 ## 一、完整安装步骤
 整体安装思路为：
 1. 安装支持 CUDA 的 NVIDIA 驱动

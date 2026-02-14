@@ -108,7 +108,7 @@ def run_simulation():
     last_action = np.zeros(12, dtype=np.float32)
     target_dof_pos = Cfg.default_dof_pos.copy()
     
-    print("\n✅ 启动成功！界面已同步至 A1 同款风格")
+    print("\n✅ 启动成功！")
     print("🎮 控制指南: [↑/↓] 前进后退 | [←/→] 左右转向 | [Shift + ←/→] 左右平移 | [Enter] 停止")
 
     step_counter = 0
