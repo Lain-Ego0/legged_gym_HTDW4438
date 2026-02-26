@@ -1,5 +1,5 @@
 <mujoco model="htdw_4438">
-    <compiler angle="radian" meshdir="/home/sunteng/Documents/GitHub/Lain_isaacgym/resources/robots/htdw_4438/meshes/" />
+    <compiler angle="radian" meshdir="../meshes" />
     <size njmax="500" nconmax="100" />
 
     <asset>

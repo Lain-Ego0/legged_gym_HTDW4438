@@ -23,11 +23,11 @@ class Cfg:
 
     # --- 1.2 仿真与控制参数 ---
     sim_dt = 0.005              # 物理步长
-    decimation = 2              # 控制频率分频 (100Hz Policy / 200Hz Sim)
+    decimation = 4              # 200Hz Sim / 4 = 50Hz Policy (与训练一致)
     
     # 动作与观测限制
-    action_clip = 10.0
-    tau_limit = 40.0
+    action_clip = 100.0
+    clip_obs = 100.0
     
     # --- 1.3 运行时变量 (将在 load_config 中填充) ---
     kps = None
@@ -61,14 +61,17 @@ class Cfg:
         cls.dof_vel_scale = config['dof_vel_scale']
         cls.action_scale = config['action_scale']
         cls.cmd_scale = np.array(config['cmd_scale'], dtype=np.float32)
+        cls.clip_obs = float(config.get("clip_obs", cls.clip_obs))
+        cls.action_clip = float(config.get("action_clip", cls.action_clip))
         
         print(f"✅ Config Loaded from: {cls.YAML_PATH}")
 
 # ===================== 2. 工具函数 (Utils) =====================
 def quat_rotate_inverse(q, v):
     """计算向量 v 在四元数 q 表示的坐标系下的逆旋转 (World frame to Body frame)"""
-    q_w = q[0]
-    q_vec = q[1:4]
+    # q: [x, y, z, w] 与 IsaacGym/LeggedGym 一致
+    q_w = q[-1]
+    q_vec = q[:3]
     
     a = v * (2.0 * q_w**2 - 1.0)
     b = np.cross(q_vec, v) * q_w * 2.0
@@ -129,20 +132,22 @@ def run_simulation():
 
     # 3. 加载 ONNX
     print(f"🧠 Loading Policy: {Cfg.ONNX_PATH}")
-    ort_session = ort.InferenceSession(Cfg.ONNX_PATH)
+    ort_session = ort.InferenceSession(Cfg.ONNX_PATH, providers=["CPUExecutionProvider"])
     input_name = ort_session.get_inputs()[0].name
     input_shape = ort_session.get_inputs()[0].shape
-    print(f"   Input Shape: {input_shape}") # 预期: [batch, 64]
+    print(f"   Input Shape: {input_shape}") # 预期: [batch, 45]
 
     # 4. 初始化状态
     data.qpos[7:] = Cfg.default_dof_pos
-    data.qpos[2] = 0.5 # 初始高度
+    data.qpos[2] = 0.15 # 初始高度 (与训练 cfg.init_state.pos 对齐)
     mujoco.mj_forward(model, data)
 
     # 运行时变量
     cmd_handler = CommandHandler()
-    action = np.zeros(12, dtype=np.float32)
+    action = np.zeros(12, dtype=np.float32)  # last_action
     target_dof_pos = Cfg.default_dof_pos.copy()
+    ctrl_range = model.actuator_ctrlrange.copy()
+    tau_limit = np.maximum(np.abs(ctrl_range[:, 0]), np.abs(ctrl_range[:, 1])).astype(np.float32)
     
     # 5. 仿真循环
     print("🎮 Control: [Arrows] Move | [Space] Pause | [Enter] Stop")
@@ -154,14 +159,14 @@ def run_simulation():
             step_start = time.time()
             
             if not cmd_handler.paused:
-                # ================= 策略循环 (100Hz) =================
+                # ================= 策略循环 (50Hz) =================
                 # 使用取模方式降频 (Decimation)
                 if step_counter % Cfg.decimation == 0:
                     # --- A. 获取传感器数据 ---
                     qj = data.qpos[7:]
                     dqj = data.qvel[6:]
-                    quat = data.qpos[3:7]  # [w, x, y, z]
-                    omega = data.qvel[3:6] # 机身角速度
+                    quat = data.sensor("orientation").data[[1, 2, 3, 0]].astype(np.float32)  # [x, y, z, w]
+                    omega = data.sensor("angular-velocity").data.astype(np.float32)  # body frame
 
                     # --- B. 数据处理 ---
                     gravity_vec = np.array([0., 0., -1.], dtype=np.float32)
@@ -183,6 +188,7 @@ def run_simulation():
                         dqj_norm,
                         action
                     ]).astype(np.float32)
+                    obs = np.clip(obs, -Cfg.clip_obs, Cfg.clip_obs)
                     
                     # --- D. 推理 ---
                     # 直接将 45维的 obs 传给模型
@@ -193,8 +199,10 @@ def run_simulation():
                     raw_action = np.clip(raw_action, -Cfg.action_clip, Cfg.action_clip)
                     action = raw_action # 更新 LastAction 用于下一帧
                     
-                    # 计算目标位置: target = default + action * scale
-                    target_dof_pos = (raw_action * Cfg.action_scale) + Cfg.default_dof_pos
+                    # 计算目标位置 (与训练时 LeggedRobot._compute_torques 对齐)
+                    scaled = raw_action * Cfg.action_scale
+                    scaled[[0, 3, 6, 9]] *= 0.5
+                    target_dof_pos = scaled + Cfg.default_dof_pos
 
                 # ================= 物理循环 (PD Control) =================
                 # PD Control: Kp * (target - current) + Kd * (0 - velocity)
@@ -202,8 +210,7 @@ def run_simulation():
                 tau = Cfg.kps * (target_dof_pos - data.qpos[7:]) - Cfg.kds * data.qvel[6:]
                 
                 # 限制力矩
-                tau = np.clip(tau, -Cfg.tau_limit, Cfg.tau_limit)
-                data.ctrl[:] = tau
+                data.ctrl[:] = np.clip(tau, -tau_limit, tau_limit)
                 
                 # 物理步进
                 mujoco.mj_step(model, data)
