@@ -3,6 +3,10 @@
 
 - 飞书安装文档[🎯 欢迎来到IsaacGym](https://wcn9j5638vrr.feishu.cn/wiki/Aq7mwJ0Zmi0e0TkquqDcNSHYnnf)
 
+| 日志查看 | `tensorboard --logdir .` |
+| 策略回放 | `export PYTHONPATH=. && python legged_gym/scripts/play.py --task=htdw_4438 --load_run Jan27_17-56-48_h --checkpoint 1500` |
+| 策略训练 | `python legged_gym/scripts/train.py --task=htdw_4438 --headless` |
+
 ## 一、完整安装步骤
 整体安装思路为：
 1. 安装支持 CUDA 的 NVIDIA 驱动
