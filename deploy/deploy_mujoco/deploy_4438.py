@@ -1,228 +1,220 @@
-import time
-import os
-import yaml
 import numpy as np
 import mujoco
-import mujoco.viewer
+import mujoco_viewer  # 切换到第三方 viewer 以获得一致的界面
 import onnxruntime as ort
+import os, time, yaml, re
+
+try:
+    import glfw
+except ImportError:
+    raise ImportError("请安装 glfw: pip install glfw")
 
 # ===================== 1. 配置 (Configuration) =====================
 class Cfg:
-    # --- 1.1 路径配置 (使用相对路径，提高移植性) ---
-    CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-    # 假设文件结构保持原样：
-    # PROJECT_ROOT/deploy/deploy_mujoco/deploy_4438.py (本文件)
-    # PROJECT_ROOT/deploy/deploy_mujoco/configs/htdw_4438.yaml
-    # PROJECT_ROOT/resources/robots/htdw_4438/xml/scene.xml
-    # PROJECT_ROOT/onnx/HTDW_4438.onnx
-    
-    PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, "../../")) 
-    YAML_PATH = os.path.join(PROJECT_ROOT, "deploy/deploy_mujoco/config/htdw_4438.yaml")
-    XML_PATH = os.path.join(PROJECT_ROOT, "resources/robots/htdw_4438/xml/scene.xml")
-    ONNX_PATH = os.path.join(PROJECT_ROOT, "onnx/policy_1500.onnx")
+    # 路径配置自动适配项目结构
+    ROOT = os.path.dirname(os.path.abspath(__file__))
+    PROJECT_ROOT = os.path.abspath(os.path.join(ROOT, "../../"))
 
-    # --- 1.2 仿真与控制参数 ---
-    sim_dt = 0.005              # 物理步长
-    decimation = 4              # 200Hz Sim / 4 = 50Hz Policy (与训练一致)
+    ROBOT_DIR = os.path.join(PROJECT_ROOT, "resources/robots/htdw_4438")
+    XML_PATH = os.path.join(ROBOT_DIR, "xml/scene.xml")
+    MESHES_DIR = os.path.join(ROBOT_DIR, "meshes")
+
+    YAML_PATH = os.path.join(PROJECT_ROOT, "deploy/deploy_mujoco/config/htdw_4438.yaml")
+    ONNX_PATH = os.path.join(PROJECT_ROOT, "onnx/htdw_4438_standard_20260226_165638_model_1500.onnx")
+
+    sim_dt = 0.005              # 200Hz 物理步长
+    decimation = 4              # 50Hz 策略频率
     
-    # 动作与观测限制
-    action_clip = 100.0
-    clip_obs = 100.0
-    
-    # --- 1.3 运行时变量 (将在 load_config 中填充) ---
-    kps = None
-    kds = None
-    default_dof_pos = None
-    
-    # 缩放因子
-    lin_vel_scale = 1.0
-    ang_vel_scale = 1.0
-    dof_pos_scale = 1.0
-    dof_vel_scale = 1.0
-    action_scale = 1.0
-    cmd_scale = np.array([1.0, 1.0, 1.0])
+    # 控制增量与衰减
+    vel_scales = [0.05, 0.05, 0.1] # x, y, yaw 步进速度
+    vel_decay = 0.95               # 自动减速系数
 
     @classmethod
     def load_yaml(cls):
-        """加载 YAML 配置文件并更新类属性"""
-        if not os.path.exists(cls.YAML_PATH):
-            raise FileNotFoundError(f"Config not found: {cls.YAML_PATH}")
-            
+        """从 YAML 加载关键的 PD 参数、默认关节弧度与缩放因子"""
         with open(cls.YAML_PATH, "r") as f:
             config = yaml.load(f, Loader=yaml.FullLoader)
-            
-        cls.kps = np.array(config['kps'], dtype=np.float32)
-        cls.kds = np.array(config['kds'], dtype=np.float32)
-        cls.default_dof_pos = np.array(config['default_angles'], dtype=np.float32)
-        
-        cls.lin_vel_scale = config['lin_vel_scale']
-        cls.ang_vel_scale = config['ang_vel_scale']
-        cls.dof_pos_scale = config['dof_pos_scale']
-        cls.dof_vel_scale = config['dof_vel_scale']
-        cls.action_scale = config['action_scale']
-        cls.cmd_scale = np.array(config['cmd_scale'], dtype=np.float32)
-        cls.clip_obs = float(config.get("clip_obs", cls.clip_obs))
-        cls.action_clip = float(config.get("action_clip", cls.action_clip))
-        
-        print(f"✅ Config Loaded from: {cls.YAML_PATH}")
 
-# ===================== 2. 工具函数 (Utils) =====================
-def quat_rotate_inverse(q, v):
-    """计算向量 v 在四元数 q 表示的坐标系下的逆旋转 (World frame to Body frame)"""
-    # q: [x, y, z, w] 与 IsaacGym/LeggedGym 一致
-    q_w = q[-1]
-    q_vec = q[:3]
+        cls.kps = np.array(config["kps"], dtype=np.float32)
+        cls.kds = np.array(config["kds"], dtype=np.float32)
+        cls.default_dof_pos = np.array(config["default_angles"], dtype=np.float32)
+
+        cls.action_scale = float(config.get("action_scale", 0.05))
+        cls.cmd_scale = np.array(config.get("cmd_scale", [2.0, 2.0, 0.25]), dtype=np.float32)
+        cls.dof_pos_scale = float(config.get("dof_pos_scale", 1.0))
+        cls.dof_vel_scale = float(config.get("dof_vel_scale", 0.05))
+        cls.ang_vel_scale = float(config.get("ang_vel_scale", 0.25))
+
+        cls.clip_obs = float(config.get("clip_obs", 100.0))
+        cls.action_clip = float(config.get("action_clip", 100.0))
+
+        cls.sim_dt = float(config.get("simulation_dt", cls.sim_dt))
+        cls.decimation = int(config.get("control_decimation", cls.decimation))
+        cls.cmd_init = np.array(config.get("cmd_init", [0.0, 0.0, 0.0]), dtype=np.float32)
+
+# ===================== 2. 控制器函数 =====================
+def load_model(xml_path, meshes_dir):
+    """参照 A1 的 deploy：用 from_xml_string + assets 规避 XML 中的绝对 meshdir/路径问题。"""
+    if not os.path.exists(xml_path):
+        raise FileNotFoundError(xml_path)
+    if not os.path.isdir(meshes_dir):
+        raise FileNotFoundError(meshes_dir)
+
+    xml_dir = os.path.dirname(xml_path)
+    assets = {}
+
+    for filename in os.listdir(xml_dir):
+        if filename.endswith(".xml") and filename != os.path.basename(xml_path):
+            with open(os.path.join(xml_dir, filename), "rb") as f:
+                assets[filename] = f.read()
+
+    for filename in os.listdir(meshes_dir):
+        if filename.lower().endswith((".stl", ".obj", ".dae")):
+            with open(os.path.join(meshes_dir, filename), "rb") as f:
+                assets[filename] = f.read()
+
+    with open(xml_path, "r") as f:
+        content = f.read()
+
+    content = re.sub(
+        r'file="[^"]*?([^\\\/"]+\.(?:stl|obj|dae))"',
+        r'file="\1"',
+        content,
+        flags=re.IGNORECASE,
+    )
+
+    return mujoco.MjModel.from_xml_string(content, assets=assets)
+
+
+def update_keyboard_command(window, cmd):
+    """
+    使用 glfw 直接读取按键，支持 Shift 组合键
+    cmd: [vx, vy, yaw_rate]
+    """
+    # 获取按键状态
+    key_up = glfw.get_key(window, glfw.KEY_UP) == glfw.PRESS
+    key_down = glfw.get_key(window, glfw.KEY_DOWN) == glfw.PRESS
+    key_left = glfw.get_key(window, glfw.KEY_LEFT) == glfw.PRESS
+    key_right = glfw.get_key(window, glfw.KEY_RIGHT) == glfw.PRESS
+    key_shift = (glfw.get_key(window, glfw.KEY_LEFT_SHIFT) == glfw.PRESS or 
+                 glfw.get_key(window, glfw.KEY_RIGHT_SHIFT) == glfw.PRESS)
+    key_enter = glfw.get_key(window, glfw.KEY_ENTER) == glfw.PRESS
+
+    # 1. 前后控制
+    if key_up:    cmd[0] += Cfg.vel_scales[0]
+    if key_down:  cmd[0] -= Cfg.vel_scales[0]
     
+    # 2. 左右平移 vs 转向控制
+    if key_shift: # 开启平移模式
+        if key_left:  cmd[1] += Cfg.vel_scales[1]
+        if key_right: cmd[1] -= Cfg.vel_scales[1]
+        cmd[2] *= Cfg.vel_decay # 平移时减少转向指令
+    else:         # 开启转向模式
+        if key_left:  cmd[2] += Cfg.vel_scales[2]
+        if key_right: cmd[2] -= Cfg.vel_scales[2]
+        cmd[1] *= Cfg.vel_decay # 转向时减少平移指令
+
+    # 3. 停止逻辑
+    if key_enter: cmd[:] = 0.0
+    
+    # 指令后处理：衰减与限幅
+    cmd[:] = np.clip(cmd * Cfg.vel_decay, -1.0, 1.5)
+    if np.linalg.norm(cmd) < 0.01: cmd[:] = 0.0
+    return cmd
+
+def quat_rotate_inverse(q, v):
+    """处理四元数旋转：World -> Body"""
+    # q: [x, y, z, w] 与 IsaacGym/LeggedGym 一致
+    q_w, q_vec = q[-1], q[:3]
     a = v * (2.0 * q_w**2 - 1.0)
     b = np.cross(q_vec, v) * q_w * 2.0
     c = q_vec * np.dot(q_vec, v) * 2.0
     return a - b + c
 
-class CommandHandler:
-    """处理键盘输入，替代 pynput，使用 MuJoCo 原生回调"""
-    def __init__(self):
-        self.cmd = np.array([0.0, 0.0, 0.0], dtype=np.float32) # [vx, vy, omega]
-        self.paused = False
-        # 速度增量
-        self.vel_inc_x = 0.2
-        self.vel_inc_w = 0.4
-
-    def key_callback(self, keycode):
-        # 简单的状态机或按键映射
-        # keycode 对应 ASCII 码
-        char_key = chr(keycode) if keycode <= 255 else None
-        
-        if keycode == 265: # Up Arrow
-            self.cmd[0] += self.vel_inc_x
-        elif keycode == 264: # Down Arrow
-            self.cmd[0] -= self.vel_inc_x
-        elif keycode == 263: # Left Arrow
-            self.cmd[2] += self.vel_inc_w
-        elif keycode == 262: # Right Arrow
-            self.cmd[2] -= self.vel_inc_w
-        elif keycode == 32:  # Space
-            self.paused = not self.paused
-            self.cmd[:] = 0.0 # 暂停时重置指令
-            print(f"Paused: {self.paused}")
-        elif keycode == 257: # Enter (Reset cmd)
-            self.cmd[:] = 0.0
-            
-        # 限制范围
-        self.cmd[0] = np.clip(self.cmd[0], -1.0, 1.5)
-        self.cmd[2] = np.clip(self.cmd[2], -2.0, 2.0)
-
-# ===================== 3. 主程序 (Main) =====================
+# ===================== 3. 主循环 =====================
 def run_simulation():
-    # 1. 初始化配置
-    try:
-        Cfg.load_yaml()
-    except Exception as e:
-        print(f"❌ Error loading config: {e}")
-        return
-
-    # 2. 加载模型
-    if not os.path.exists(Cfg.XML_PATH):
-        print(f"❌ XML not found: {Cfg.XML_PATH}")
-        return
+    Cfg.load_yaml()
     
-    print(f"🚀 Loading MuJoCo Model: {Cfg.XML_PATH}")
-    model = mujoco.MjModel.from_xml_path(Cfg.XML_PATH)
+    # 加载模型与策略
+    model = load_model(Cfg.XML_PATH, Cfg.MESHES_DIR)
     model.opt.timestep = Cfg.sim_dt
     data = mujoco.MjData(model)
-
-    # 3. 加载 ONNX
-    print(f"🧠 Loading Policy: {Cfg.ONNX_PATH}")
     ort_session = ort.InferenceSession(Cfg.ONNX_PATH, providers=["CPUExecutionProvider"])
     input_name = ort_session.get_inputs()[0].name
-    input_shape = ort_session.get_inputs()[0].shape
-    print(f"   Input Shape: {input_shape}") # 预期: [batch, 45]
 
-    # 4. 初始化状态
-    data.qpos[7:] = Cfg.default_dof_pos
-    data.qpos[2] = 0.15 # 初始高度 (与训练 cfg.init_state.pos 对齐)
+    # 初始化位置
+    data.qpos[-12:] = Cfg.default_dof_pos
+    data.qpos[2] = 0.15  # 初始化高度 (与训练 cfg.init_state.pos 对齐)
     mujoco.mj_forward(model, data)
-
-    # 运行时变量
-    cmd_handler = CommandHandler()
-    action = np.zeros(12, dtype=np.float32)  # last_action
+    
+    # 第三方 Viewer
+    viewer = mujoco_viewer.MujocoViewer(model, data)
+    
+    cmd_vel = Cfg.cmd_init.copy()
+    last_action = np.zeros(12, dtype=np.float32)
     target_dof_pos = Cfg.default_dof_pos.copy()
+
     ctrl_range = model.actuator_ctrlrange.copy()
     tau_limit = np.maximum(np.abs(ctrl_range[:, 0]), np.abs(ctrl_range[:, 1])).astype(np.float32)
     
-    # 5. 仿真循环
-    print("🎮 Control: [Arrows] Move | [Space] Pause | [Enter] Stop")
-    
-    with mujoco.viewer.launch_passive(model, data, key_callback=cmd_handler.key_callback) as viewer:
-        step_counter = 0
+    print("\n✅ 启动成功！")
+    print("🎮 控制指南: [↑/↓] 前进后退 | [←/→] 左右转向 | [Shift + ←/→] 左右平移 | [Enter] 停止")
+
+    step_counter = 0
+    while viewer.is_alive:
+        step_start = time.time()
+
+        # 1. 更新按键指令
+        cmd_vel = update_keyboard_command(viewer.window, cmd_vel)
+
+        # 2. 策略推理 (50Hz)
+        if step_counter % Cfg.decimation == 0:
+            # 构建 45 维观测向量
+            q = data.qpos[-12:].astype(np.float32)
+            dq = data.qvel[-12:].astype(np.float32)
+
+            quat = data.sensor("orientation").data[[1, 2, 3, 0]].astype(np.float32)
+            omega = data.sensor("angular-velocity").data.astype(np.float32)
+            proj_g = quat_rotate_inverse(quat, np.array([0.0, 0.0, -1.0], dtype=np.float32))
+
+            obs = np.concatenate(
+                [
+                    omega * Cfg.ang_vel_scale,
+                    proj_g,
+                    cmd_vel * Cfg.cmd_scale,
+                    (q - Cfg.default_dof_pos) * Cfg.dof_pos_scale,
+                    dq * Cfg.dof_vel_scale,
+                    last_action,
+                ]
+            ).astype(np.float32).reshape(1, -1)
+
+            obs = np.clip(obs, -Cfg.clip_obs, Cfg.clip_obs)
+
+            # 推理并更新动作
+            raw_action = ort_session.run(None, {input_name: obs})[0][0].astype(np.float32)
+            raw_action = np.clip(raw_action, -Cfg.action_clip, Cfg.action_clip)
+            last_action = raw_action.copy()
+
+            # 与训练时 LeggedRobot._compute_torques 对齐：
+            # actions_scaled = actions * action_scale; actions_scaled[hip] *= 0.5
+            scaled = raw_action * Cfg.action_scale
+            scaled[[0, 3, 6, 9]] *= 0.5
+            target_dof_pos = scaled + Cfg.default_dof_pos
+
+        # 3. PD 控制 (200Hz)
+        tau = Cfg.kps * (target_dof_pos - data.qpos[-12:]) - Cfg.kds * data.qvel[-12:]
+        data.ctrl[:] = np.clip(tau, -tau_limit, tau_limit)
+
+        mujoco.mj_step(model, data)
+        viewer.render()
         
-        while viewer.is_running():
-            step_start = time.time()
-            
-            if not cmd_handler.paused:
-                # ================= 策略循环 (50Hz) =================
-                # 使用取模方式降频 (Decimation)
-                if step_counter % Cfg.decimation == 0:
-                    # --- A. 获取传感器数据 ---
-                    qj = data.qpos[7:]
-                    dqj = data.qvel[6:]
-                    quat = data.sensor("orientation").data[[1, 2, 3, 0]].astype(np.float32)  # [x, y, z, w]
-                    omega = data.sensor("angular-velocity").data.astype(np.float32)  # body frame
+        # 帧率同步
+        step_counter += 1
+        time_until_next = Cfg.sim_dt - (time.time() - step_start)
+        if time_until_next > 0:
+            time.sleep(time_until_next)
 
-                    # --- B. 数据处理 ---
-                    gravity_vec = np.array([0., 0., -1.], dtype=np.float32)
-                    proj_gravity = quat_rotate_inverse(quat, gravity_vec)
-
-                    # 归一化
-                    qj_norm = (qj - Cfg.default_dof_pos) * Cfg.dof_pos_scale
-                    dqj_norm = dqj * Cfg.dof_vel_scale
-                    omega_norm = omega * Cfg.ang_vel_scale
-                    cmd_norm = cmd_handler.cmd * Cfg.cmd_scale
-
-                    # --- C. 构建观测向量 (45维) ---
-                    # 顺序: AngVel(3) + Gravity(3) + Cmd(3) + DofPos(12) + DofVel(12) + LastAction(12)
-                    obs = np.concatenate([
-                        omega_norm,
-                        proj_gravity,
-                        cmd_norm,
-                        qj_norm,
-                        dqj_norm,
-                        action
-                    ]).astype(np.float32)
-                    obs = np.clip(obs, -Cfg.clip_obs, Cfg.clip_obs)
-                    
-                    # --- D. 推理 ---
-                    # 直接将 45维的 obs 传给模型
-                    ort_outs = ort_session.run(None, {input_name: obs.reshape(1, -1)})
-                    raw_action = ort_outs[0][0]
-
-                    # --- E. 后处理 ---
-                    raw_action = np.clip(raw_action, -Cfg.action_clip, Cfg.action_clip)
-                    action = raw_action # 更新 LastAction 用于下一帧
-                    
-                    # 计算目标位置 (与训练时 LeggedRobot._compute_torques 对齐)
-                    scaled = raw_action * Cfg.action_scale
-                    scaled[[0, 3, 6, 9]] *= 0.5
-                    target_dof_pos = scaled + Cfg.default_dof_pos
-
-                # ================= 物理循环 (PD Control) =================
-                # PD Control: Kp * (target - current) + Kd * (0 - velocity)
-                # 注意: 4438 源码中 Kd 项是 (target_dq - dq)，通常 target_dq 为 0
-                tau = Cfg.kps * (target_dof_pos - data.qpos[7:]) - Cfg.kds * data.qvel[6:]
-                
-                # 限制力矩
-                data.ctrl[:] = np.clip(tau, -tau_limit, tau_limit)
-                
-                # 物理步进
-                mujoco.mj_step(model, data)
-                step_counter += 1
-            
-            # 同步画面
-            viewer.sync()
-
-            # 帧率控制 (Real-time sync)
-            time_until_next = model.opt.timestep - (time.time() - step_start)
-            if time_until_next > 0:
-                time.sleep(time_until_next)
+    viewer.close()
 
 if __name__ == "__main__":
     run_simulation()

@@ -16,7 +16,7 @@ class Htdw4438Cfg(LeggedRobotCfg):
     # 2. 地形 (Terrain)
     # ==========================
     class terrain(LeggedRobotCfg.terrain):
-        mesh_type = 'plane'       # 训练初期用平面，后期改为 'trimesh' 进行崎岖地形训练
+        mesh_type = 'plane'       # 训练初期用plane，后期改为 'trimesh' 进行崎岖地形训练
         # measure_heights = True    # 开启高度测量，以便填入观测向量的后 187 维
         measure_heights = False
         
@@ -58,7 +58,7 @@ class Htdw4438Cfg(LeggedRobotCfg):
         class ranges(LeggedRobotCfg.commands.ranges):
             lin_vel_x = [-0.6, 0.6] 
             lin_vel_y = [-0.4, 0.4] 
-            ang_vel_yaw = [-0.2, 0.2] 
+            ang_vel_yaw = [-0.4, 0.4] 
             heading = [-3.14, 3.14]
 
     # ==========================
@@ -91,7 +91,7 @@ class Htdw4438Cfg(LeggedRobotCfg):
         base_mass_range = [0.8, 1.2] 
         added_mass_range = [-0.1, 0.3] 
         
-        push_robots = True  # 标准 LeggedGym 开启推力
+        push_robots = True  
         push_interval_s = 15
         max_push_vel_xy = 0.5
         
