@@ -1,0 +1,110 @@
+<mujoco model="htdw_4438 scene debris mixed">
+  <include file="htdw_4438.xml"/>
+
+  <statistic center="0 0 0.1" extent="0.8"/>
+
+  <visual>
+    <headlight diffuse="0.6 0.6 0.6" ambient="0.3 0.3 0.3" specular="0 0 0"/>
+    <rgba haze="0.15 0.25 0.35 1"/>
+  </visual>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512" height="3072"/>
+    <texture type="2d" name="groundplane" builtin="checker" mark="edge" rgb1="0.2 0.3 0.4" rgb2="0.1 0.2 0.3"
+      markrgb="0.8 0.8 0.8" width="300" height="300"/>
+    <material name="groundplane" texture="groundplane" texuniform="true" texrepeat="5 5" reflectance="0.2"/>
+
+    <material name="debris_stone" rgba="0.45 0.45 0.45 1" reflectance="0.05"/>
+    <material name="debris_stone2" rgba="0.25 0.25 0.25 1" reflectance="0.05"/>
+    <material name="debris_brick" rgba="0.55 0.32 0.24 1" reflectance="0.05"/>
+    <material name="debris_concrete" rgba="0.50 0.50 0.50 1" reflectance="0.03"/>
+    <material name="debris_metal" rgba="0.25 0.28 0.30 1" reflectance="0.10"/>
+    <material name="debris_wood" rgba="0.45 0.32 0.20 1" reflectance="0.05"/>
+  </asset>
+
+  <worldbody>
+    <light pos="0 0 1.5" dir="0 0 -1" directional="true"/>
+    <geom name="floor" size="0 0 0.05" type="plane" material="groundplane"/>
+
+    <!-- Mixed debris: small bricks + stumps + rocks + a few sideways logs/pipes. -->
+    <geom pos="3.478 0.303 0.008" type="box" size="0.050 0.035 0.008" material="debris_stone"/>
+    <geom pos="2.738 -0.259 0.011" type="box" size="0.053 0.054 0.011" material="debris_stone2"/>
+    <geom pos="1.006 0.216 0.016" type="box" size="0.046 0.052 0.016" material="debris_brick"/>
+    <geom pos="1.653 -0.021 0.013" type="box" size="0.033 0.032 0.013" material="debris_stone"/>
+    <geom pos="2.860 -0.128 0.016" type="box" size="0.044 0.028 0.016" material="debris_stone"/>
+    <geom pos="2.422 -0.029 0.008" type="box" size="0.036 0.032 0.008" material="debris_brick"/>
+    <geom pos="1.606 -0.001 0.015" type="box" size="0.025 0.024 0.015" material="debris_brick"/>
+    <geom pos="1.267 -0.099 0.017" type="box" size="0.055 0.037 0.017" material="debris_brick"/>
+    <geom pos="3.477 0.475 0.016" type="box" size="0.051 0.039 0.016" material="debris_stone2"/>
+    <geom pos="2.895 -0.090 0.020" type="box" size="0.044 0.034 0.020" material="debris_stone2"/>
+    <geom pos="3.095 0.528 0.014" type="box" size="0.032 0.050 0.014" material="debris_stone2"/>
+    <geom pos="1.177 -0.508 0.018" type="box" size="0.052 0.046 0.018" material="debris_stone2"/>
+    <geom pos="1.018 -0.121 0.023" type="box" size="0.024 0.031 0.023" material="debris_stone2"/>
+    <geom pos="2.544 -0.267 0.023" type="box" size="0.023 0.041 0.023" material="debris_brick"/>
+    <geom pos="3.271 0.254 0.023" type="box" size="0.022 0.027 0.023" material="debris_brick"/>
+    <geom pos="2.148 -0.333 0.019" type="box" size="0.047 0.030 0.019" material="debris_brick"/>
+    <geom pos="3.813 0.179 0.012" type="box" size="0.051 0.035 0.012" material="debris_brick"/>
+    <geom pos="4.079 -0.040 0.009" type="box" size="0.045 0.021 0.009" material="debris_stone"/>
+    <geom pos="4.126 -0.155 0.018" type="box" size="0.033 0.029 0.018" material="debris_stone"/>
+    <geom pos="1.011 -0.465 0.013" type="box" size="0.036 0.023 0.013" material="debris_brick"/>
+    <geom pos="3.427 0.463 0.018" type="box" size="0.033 0.036 0.018" material="debris_brick"/>
+    <geom pos="2.124 0.183 0.024" type="box" size="0.046 0.028 0.024" material="debris_brick"/>
+    <geom pos="3.821 -0.078 0.017" type="box" size="0.021 0.030 0.017" material="debris_stone2"/>
+    <geom pos="2.025 0.474 0.015" type="box" size="0.046 0.027 0.015" material="debris_stone2"/>
+    <geom pos="1.258 -0.358 0.024" type="box" size="0.036 0.025 0.024" material="debris_stone2"/>
+    <geom pos="2.338 -0.286 0.022" type="box" size="0.028 0.032 0.022" material="debris_brick"/>
+    <geom pos="3.428 0.487 0.019" type="box" size="0.045 0.044 0.019" material="debris_brick"/>
+    <geom pos="3.014 0.528 0.013" type="box" size="0.024 0.051 0.013" material="debris_brick"/>
+
+    <geom pos="1.971 -0.299 0.021" type="cylinder" size="0.043 0.021" material="debris_concrete"/>
+    <geom pos="2.427 0.381 0.019" type="cylinder" size="0.024 0.019" material="debris_concrete"/>
+    <geom pos="3.111 0.227 0.023" type="cylinder" size="0.033 0.023" material="debris_metal"/>
+    <geom pos="3.479 -0.141 0.012" type="cylinder" size="0.033 0.012" material="debris_metal"/>
+    <geom pos="3.635 -0.095 0.028" type="cylinder" size="0.031 0.028" material="debris_metal"/>
+    <geom pos="2.023 0.184 0.018" type="cylinder" size="0.025 0.018" material="debris_concrete"/>
+    <geom pos="4.346 -0.513 0.020" type="cylinder" size="0.027 0.020" material="debris_concrete"/>
+    <geom pos="2.035 -0.066 0.030" type="cylinder" size="0.035 0.030" material="debris_concrete"/>
+    <geom pos="4.399 -0.438 0.013" type="cylinder" size="0.032 0.013" material="debris_metal"/>
+    <geom pos="3.733 0.095 0.020" type="cylinder" size="0.038 0.020" material="debris_concrete"/>
+    <geom pos="1.977 0.071 0.020" type="cylinder" size="0.043 0.020" material="debris_concrete"/>
+    <geom pos="1.682 -0.192 0.011" type="cylinder" size="0.037 0.011" material="debris_concrete"/>
+    <geom pos="3.640 -0.071 0.008" type="cylinder" size="0.019 0.008" material="debris_metal"/>
+    <geom pos="3.381 0.199 0.030" type="cylinder" size="0.027 0.030" material="debris_metal"/>
+    <geom pos="4.321 0.042 0.010" type="cylinder" size="0.022 0.010" material="debris_concrete"/>
+    <geom pos="2.457 0.182 0.022" type="cylinder" size="0.031 0.022" material="debris_concrete"/>
+    <geom pos="3.658 -0.133 0.023" type="cylinder" size="0.039 0.023" material="debris_concrete"/>
+    <geom pos="3.589 -0.327 0.026" type="cylinder" size="0.043 0.026" material="debris_metal"/>
+    <geom pos="4.042 -0.268 0.029" type="cylinder" size="0.038 0.029" material="debris_metal"/>
+    <geom pos="1.393 -0.190 0.017" type="cylinder" size="0.045 0.017" material="debris_concrete"/>
+    <geom pos="1.275 -0.197 0.029" type="cylinder" size="0.037 0.029" material="debris_metal"/>
+    <geom pos="4.176 -0.192 0.014" type="cylinder" size="0.045 0.014" material="debris_metal"/>
+
+    <geom pos="1.755 0.146 0.027" type="sphere" size="0.027" material="debris_stone2"/>
+    <geom pos="1.324 -0.404 0.019" type="sphere" size="0.019" material="debris_stone2"/>
+    <geom pos="1.472 -0.475 0.021" type="sphere" size="0.021" material="debris_stone"/>
+    <geom pos="1.537 0.509 0.019" type="sphere" size="0.019" material="debris_stone"/>
+    <geom pos="2.444 0.402 0.036" type="sphere" size="0.036" material="debris_stone2"/>
+    <geom pos="1.873 0.461 0.018" type="sphere" size="0.018" material="debris_stone2"/>
+    <geom pos="3.899 -0.388 0.021" type="sphere" size="0.021" material="debris_stone"/>
+    <geom pos="1.349 -0.400 0.043" type="sphere" size="0.043" material="debris_stone2"/>
+    <geom pos="3.022 -0.291 0.039" type="sphere" size="0.039" material="debris_stone"/>
+    <geom pos="2.874 0.396 0.032" type="sphere" size="0.032" material="debris_stone"/>
+    <geom pos="1.777 -0.343 0.030" type="sphere" size="0.030" material="debris_stone"/>
+    <geom pos="4.082 -0.051 0.045" type="sphere" size="0.045" material="debris_stone2"/>
+    <geom pos="1.520 -0.307 0.043" type="sphere" size="0.043" material="debris_stone"/>
+    <geom pos="3.635 -0.164 0.034" type="sphere" size="0.034" material="debris_stone2"/>
+    <geom pos="3.222 -0.403 0.032" type="sphere" size="0.032" material="debris_stone2"/>
+    <geom pos="2.907 0.402 0.032" type="sphere" size="0.032" material="debris_stone2"/>
+
+    <geom pos="3.222 0.086 0.024" quat="0.707107 0.707107 0 0" type="capsule" size="0.024 0.082" material="debris_metal"/>
+    <geom pos="2.941 0.499 0.015" quat="0.707107 0 0.707107 0" type="capsule" size="0.015 0.131" material="debris_metal"/>
+    <geom pos="2.298 0.391 0.017" quat="0.707107 0.707107 0 0" type="capsule" size="0.017 0.133" material="debris_metal"/>
+    <geom pos="2.444 -0.295 0.019" quat="0.707107 0.707107 0 0" type="capsule" size="0.019 0.170" material="debris_metal"/>
+    <geom pos="1.693 -0.391 0.026" quat="0.707107 0.707107 0 0" type="capsule" size="0.026 0.072" material="debris_metal"/>
+    <geom pos="4.423 0.273 0.020" quat="0.707107 0 0.707107 0" type="capsule" size="0.020 0.170" material="debris_metal"/>
+    <geom pos="3.956 0.042 0.023" quat="0.707107 0 0.707107 0" type="capsule" size="0.023 0.128" material="debris_metal"/>
+    <geom pos="1.542 0.437 0.024" quat="0.707107 0 0.707107 0" type="capsule" size="0.024 0.161" material="debris_metal"/>
+    <geom pos="1.621 0.479 0.021" quat="0.707107 0.707107 0 0" type="capsule" size="0.021 0.089" material="debris_metal"/>
+    <geom pos="3.037 -0.381 0.017" quat="0.707107 0 0.707107 0" type="capsule" size="0.017 0.142" material="debris_metal"/>
+  </worldbody>
+</mujoco>

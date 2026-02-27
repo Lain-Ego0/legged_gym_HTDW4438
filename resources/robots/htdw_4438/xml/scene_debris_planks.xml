@@ -1,0 +1,90 @@
+<mujoco model="htdw_4438 scene debris planks">
+  <include file="htdw_4438.xml"/>
+
+  <statistic center="0 0 0.1" extent="0.8"/>
+
+  <visual>
+    <headlight diffuse="0.6 0.6 0.6" ambient="0.3 0.3 0.3" specular="0 0 0"/>
+    <rgba haze="0.15 0.25 0.35 1"/>
+  </visual>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512" height="3072"/>
+    <texture type="2d" name="groundplane" builtin="checker" mark="edge" rgb1="0.2 0.3 0.4" rgb2="0.1 0.2 0.3"
+      markrgb="0.8 0.8 0.8" width="300" height="300"/>
+    <material name="groundplane" texture="groundplane" texuniform="true" texrepeat="5 5" reflectance="0.2"/>
+
+    <material name="debris_stone" rgba="0.45 0.45 0.45 1" reflectance="0.05"/>
+    <material name="debris_stone2" rgba="0.25 0.25 0.25 1" reflectance="0.05"/>
+    <material name="debris_brick" rgba="0.55 0.32 0.24 1" reflectance="0.05"/>
+    <material name="debris_wood" rgba="0.45 0.32 0.20 1" reflectance="0.05"/>
+    <material name="debris_wood2" rgba="0.35 0.25 0.15 1" reflectance="0.05"/>
+  </asset>
+
+  <worldbody>
+    <light pos="0 0 1.5" dir="0 0 -1" directional="true"/>
+    <geom name="floor" size="0 0 0.05" type="plane" material="groundplane"/>
+
+    <!-- Thin planks (slightly tilted) + scattered small bricks/rocks. -->
+    <geom pos="3.747 0.037 0.027" euler="0.039 -0.014 4.961" type="box" size="0.239 0.053 0.009" material="debris_wood2"/>
+    <geom pos="2.888 0.217 0.029" euler="-0.009 0.016 5.656" type="box" size="0.302 0.065 0.011" material="debris_wood2"/>
+    <geom pos="4.776 -0.106 0.026" euler="-0.018 -0.046 1.548" type="box" size="0.298 0.042 0.008" material="debris_wood"/>
+    <geom pos="4.424 -0.205 0.029" euler="-0.028 -0.036 0.423" type="box" size="0.290 0.067 0.011" material="debris_wood"/>
+    <geom pos="1.675 0.509 0.026" euler="-0.036 -0.047 1.235" type="box" size="0.324 0.032 0.008" material="debris_wood2"/>
+    <geom pos="1.447 0.481 0.028" euler="-0.055 0.057 4.565" type="box" size="0.233 0.053 0.010" material="debris_wood2"/>
+    <geom pos="4.624 -0.315 0.030" euler="0.033 -0.054 3.108" type="box" size="0.336 0.051 0.012" material="debris_wood2"/>
+    <geom pos="5.099 -0.523 0.031" euler="0.052 0.028 5.016" type="box" size="0.264 0.052 0.013" material="debris_wood2"/>
+    <geom pos="2.395 0.230 0.028" euler="-0.051 -0.007 3.396" type="box" size="0.332 0.066 0.010" material="debris_wood2"/>
+    <geom pos="4.735 0.060 0.032" euler="0.052 -0.008 4.656" type="box" size="0.248 0.054 0.014" material="debris_wood"/>
+    <geom pos="1.613 -0.043 0.031" euler="0.017 -0.028 1.343" type="box" size="0.241 0.038 0.013" material="debris_wood"/>
+    <geom pos="3.239 0.124 0.031" euler="0.041 -0.013 1.222" type="box" size="0.268 0.036 0.013" material="debris_wood2"/>
+    <geom pos="4.951 0.240 0.026" euler="0.005 -0.037 2.749" type="box" size="0.280 0.055 0.008" material="debris_wood2"/>
+    <geom pos="4.367 0.411 0.029" euler="-0.015 0.016 0.905" type="box" size="0.216 0.042 0.011" material="debris_wood2"/>
+    <geom pos="4.298 -0.290 0.031" euler="-0.019 0.041 1.729" type="box" size="0.310 0.033 0.013" material="debris_wood2"/>
+    <geom pos="5.187 -0.509 0.027" euler="-0.007 0.020 1.893" type="box" size="0.331 0.053 0.009" material="debris_wood2"/>
+    <geom pos="4.405 -0.316 0.030" euler="-0.048 0.043 5.971" type="box" size="0.266 0.067 0.012" material="debris_wood"/>
+    <geom pos="3.836 -0.004 0.033" euler="0.050 0.018 3.866" type="box" size="0.183 0.036 0.015" material="debris_wood2"/>
+    <geom pos="4.194 -0.527 0.031" euler="0.018 0.025 5.022" type="box" size="0.307 0.036 0.013" material="debris_wood2"/>
+    <geom pos="4.108 -0.103 0.031" euler="-0.018 0.016 4.932" type="box" size="0.229 0.043 0.013" material="debris_wood"/>
+    <geom pos="4.127 0.448 0.027" euler="-0.036 -0.051 3.456" type="box" size="0.281 0.064 0.009" material="debris_wood2"/>
+    <geom pos="3.594 -0.280 0.028" euler="0.035 -0.021 3.466" type="box" size="0.326 0.032 0.010" material="debris_wood2"/>
+
+    <geom pos="4.004 -0.469 0.010" type="box" size="0.022 0.043 0.010" material="debris_stone2"/>
+    <geom pos="3.363 -0.520 0.021" type="box" size="0.053 0.044 0.021" material="debris_brick"/>
+    <geom pos="3.206 0.477 0.021" type="box" size="0.050 0.054 0.021" material="debris_stone2"/>
+    <geom pos="1.708 0.460 0.015" type="box" size="0.050 0.035 0.015" material="debris_brick"/>
+    <geom pos="4.093 -0.195 0.019" type="box" size="0.046 0.022 0.019" material="debris_brick"/>
+    <geom pos="4.299 -0.139 0.015" type="box" size="0.035 0.035 0.015" material="debris_brick"/>
+    <geom pos="3.037 0.192 0.011" type="box" size="0.026 0.023 0.011" material="debris_brick"/>
+    <geom pos="2.730 0.423 0.015" type="box" size="0.049 0.053 0.015" material="debris_stone2"/>
+    <geom pos="1.179 0.506 0.009" type="box" size="0.038 0.046 0.009" material="debris_stone2"/>
+    <geom pos="2.198 0.546 0.022" type="box" size="0.051 0.033 0.022" material="debris_brick"/>
+    <geom pos="4.131 0.093 0.009" type="box" size="0.032 0.044 0.009" material="debris_brick"/>
+    <geom pos="3.818 -0.482 0.009" type="box" size="0.044 0.034 0.009" material="debris_stone2"/>
+    <geom pos="1.100 0.158 0.018" type="box" size="0.044 0.054 0.018" material="debris_brick"/>
+    <geom pos="4.969 0.107 0.021" type="box" size="0.042 0.040 0.021" material="debris_brick"/>
+    <geom pos="2.892 0.094 0.013" type="box" size="0.050 0.033 0.013" material="debris_brick"/>
+    <geom pos="1.670 -0.299 0.011" type="box" size="0.042 0.026 0.011" material="debris_stone2"/>
+    <geom pos="2.607 -0.177 0.020" type="box" size="0.033 0.028 0.020" material="debris_stone2"/>
+    <geom pos="2.148 0.045 0.015" type="box" size="0.023 0.053 0.015" material="debris_brick"/>
+    <geom pos="3.953 0.290 0.018" type="box" size="0.051 0.025 0.018" material="debris_brick"/>
+    <geom pos="1.271 -0.548 0.012" type="box" size="0.028 0.032 0.012" material="debris_brick"/>
+    <geom pos="3.950 -0.086 0.018" type="box" size="0.038 0.052 0.018" material="debris_stone2"/>
+    <geom pos="1.453 0.343 0.011" type="box" size="0.045 0.033 0.011" material="debris_brick"/>
+    <geom pos="3.924 -0.283 0.013" type="box" size="0.030 0.031 0.013" material="debris_stone2"/>
+    <geom pos="4.669 -0.270 0.017" type="box" size="0.031 0.044 0.017" material="debris_stone2"/>
+    <geom pos="3.190 -0.512 0.021" type="box" size="0.031 0.049 0.021" material="debris_stone2"/>
+    <geom pos="3.038 -0.001 0.016" type="box" size="0.048 0.032 0.016" material="debris_brick"/>
+
+    <geom pos="3.016 0.093 0.042" type="sphere" size="0.042" material="debris_stone2"/>
+    <geom pos="4.174 -0.322 0.033" type="sphere" size="0.033" material="debris_stone2"/>
+    <geom pos="3.494 0.541 0.035" type="sphere" size="0.035" material="debris_stone2"/>
+    <geom pos="2.776 -0.123 0.022" type="sphere" size="0.022" material="debris_stone2"/>
+    <geom pos="1.804 0.158 0.027" type="sphere" size="0.027" material="debris_stone2"/>
+    <geom pos="1.713 0.135 0.023" type="sphere" size="0.023" material="debris_stone2"/>
+    <geom pos="1.803 -0.416 0.024" type="sphere" size="0.024" material="debris_stone2"/>
+    <geom pos="4.026 0.475 0.037" type="sphere" size="0.037" material="debris_stone"/>
+    <geom pos="4.326 -0.217 0.030" type="sphere" size="0.030" material="debris_stone2"/>
+    <geom pos="3.733 -0.046 0.021" type="sphere" size="0.021" material="debris_stone"/>
+  </worldbody>
+</mujoco>
