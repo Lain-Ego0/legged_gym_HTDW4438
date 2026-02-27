@@ -5,15 +5,15 @@
 
 日志查看
 ```bash  
-`tensorboard --logdir .` 
+tensorboard --logdir . 
 ```
 策略回放  
 ```bash
-`export PYTHONPATH=. && python legged_gym/scripts/play.py --task=htdw_4438 --load_run Jan27_17-56-48_ --checkpoint 1500` 
+export PYTHONPATH=. && python legged_gym/scripts/play.py --task=htdw_4438 --load_run Jan27_17-56-48_ --checkpoint 1500
 ```
 策略训练  
 ```bash
-`python legged_gym/scripts/train.py --task=htdw_4438 --headless` 
+python legged_gym/scripts/train.py --task=htdw_4438 --headless
 ```  
 
 ## 一、完整安装步骤
@@ -202,45 +202,7 @@ tensorboard --logdir .
 4.  在`isaacgym_anymal/envs/__init__.py`中完成新环境注册
 5.  按需调优`cfg`和`cfg_train`中其他参数，无需某奖励时将其缩放系数设为0即可，禁止修改其他已有环境的参数。
 
-## 五、故障排查
-### 常见报错解决方案
-若出现报错：`ImportError: libpython3.8m.so.1.0: cannot open shared object file: No such file or directory`
-1.  执行系统安装命令：
-    ```bash
-    sudo apt install libpython3.8
-    ```
-2.  若仍未解决，执行Python库路径导出命令（conda环境需替换为对应环境lib路径）：
-    ```bash
-    # 通用系统Python
-    export LD_LIBRARY_PATH=/path/to/libpython/directory
-    # Conda虚拟环境
-    export LD_LIBRARY_PATH=/path/to/conda/envs/your_env/lib
-    ```
-
-### 已知问题说明
-GPU仿真下，使用三角网格地形时，`net_contact_force_tensor`上报的接触力数据不可靠。
-- 解决方案：在机器人足部/末端执行器添加力传感器，参考代码如下：
-```python
-sensor_pose = gymapi.Transform()
-for name in feet_names:
-    sensor_options = gymapi.ForceSensorProperties()
-    sensor_options.enable_forward_dynamics_forces = False # 例如重力
-    sensor_options.enable_constraint_solver_forces = True # 例如接触力
-    sensor_options.use_world_frame = True # 世界坐标系下返回力数据，便于获取垂直分量
-    index = self.gym.find_asset_rigid_body_index(robot_asset, name)
-    self.gym.create_asset_force_sensor(robot_asset, index, sensor_pose, sensor_options)
-
-# 传感器张量读取
-sensor_tensor = self.gym.acquire_force_sensor_tensor(self.sim)
-self.gym.refresh_force_sensor_tensor(self.sim)
-force_sensor_readings = gymtorch.wrap_tensor(sensor_tensor)
-self.sensor_forces = force_sensor_readings.view(self.num_envs, 4, 6)[..., :3]
-
-self.gym.refresh_force_sensor_tensor(self.sim)
-contact = self.sensor_forces[:, :, 2] > 1.
-```
-
-## 六、全量命令汇总表
+## 五、命令汇总表
 | 命令类别 | 完整可执行命令 |
 | :--- | :--- |
 | 日志查看 | `tensorboard --logdir .` |
