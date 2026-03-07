@@ -16,11 +16,11 @@ class Cfg:
     PROJECT_ROOT = os.path.abspath(os.path.join(ROOT, "../../"))
 
     ROBOT_DIR = os.path.join(PROJECT_ROOT, "resources/robots/htdw_4438")
-    XML_PATH = os.path.join(ROBOT_DIR, "xml/scene.xml")
+    XML_PATH = os.path.join(ROBOT_DIR, "xml/scene_debris_mixed.xml")
     MESHES_DIR = os.path.join(ROBOT_DIR, "meshes")
 
     YAML_PATH = os.path.join(PROJECT_ROOT, "deploy/deploy_mujoco/config/htdw_4438.yaml")
-    ONNX_PATH = os.path.join(PROJECT_ROOT, "onnx/htdw_4438_standard_20260227_113156_model_1500.onnx")
+    ONNX_PATH = os.path.join(PROJECT_ROOT, "onnx/htdw_4438_standard_20260227_153916_model_600.onnx")
 
     sim_dt = 0.005              # 200Hz 物理步长
     decimation = 4              # 50Hz 策略频率
