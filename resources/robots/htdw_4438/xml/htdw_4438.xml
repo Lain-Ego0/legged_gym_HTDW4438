@@ -25,7 +25,8 @@
     <!-- 统一设置阻尼、摩擦力、碰撞解算参数 -->
     <default>
         <!-- IsaacGym/LeggedGym cfg.asset.armature = 0.005; 这里对齐以提升数值稳定性 -->
-        <joint limited="true" damping="0.1" frictionloss="0.0" armature="0.005"/>
+	        <!-- URDF 未显式设置关节被动阻尼；此处设为 0 以对齐 IsaacGym（被动阻尼主要由 PD 的 Kd 提供） -->
+	        <joint limited="true" damping="0.0" frictionloss="0.0" armature="0.005"/>
         <!-- 原 solref=0.005 过硬，容易在接触+高频PD下抖动；改为更温和的接触时间常数 -->
         <geom contype="1" conaffinity="1" friction="0.8 0.05 0.05" solref="0.02 1"/>
     </default>
@@ -34,7 +35,8 @@
         <!-- Robot Base (Root Body) from Snippet -->
         <body name="robot" pos="0 0 0.3" quat="1 0 0 0">
             <joint name="float_base" type="free" limited="false"/>
-            <inertial pos="0 0 0" quat="1 0 0 0" mass="4.713" diaginertia="0.0168 0.0566 0.0647"/>
+	        <!-- 与 resources/robots/htdw_4438/urdf/htdw_4438.urdf 的 base_link 惯性对齐（避免 sim2sim gap） -->
+	        <inertial pos="-0.00139370 0.00012462 0.01353999" quat="0.05699976 0.72222690 0.06363175 0.68636020" mass="2.68214792" diaginertia="0.01217432 0.01195068 0.00675497"/>
             <site name="imu" pos="-0.02557 0 0.04232" />
 
             <!-- Adding Visual Geoms from Original File to the Root Body -->
