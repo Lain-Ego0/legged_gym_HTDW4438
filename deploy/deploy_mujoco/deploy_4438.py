@@ -25,15 +25,39 @@ class Cfg:
     sim_dt = 0.005              # 200Hz 物理步长
     decimation = 2              # 100Hz 策略频率
 
+    # 必须与训练时 action/dof 的顺序一致
+    JOINT_NAMES = [
+        "FL_hip_joint", "FL_thigh_joint", "FL_calf_joint",
+        "FR_hip_joint", "FR_thigh_joint", "FR_calf_joint",
+        "RL_hip_joint", "RL_thigh_joint", "RL_calf_joint",
+        "RR_hip_joint", "RR_thigh_joint", "RR_calf_joint",
+    ]
+
     # 控制增量与衰减
     vel_scales = [0.05, 0.05, 0.1] # x, y, yaw 步进速度
     vel_decay = 0.95               # 自动减速系数
+
+    @classmethod
+    def _resolve_path(cls, path: str) -> str:
+        path = path.replace("{LEGGED_GYM_ROOT_DIR}", cls.PROJECT_ROOT)
+        if not os.path.isabs(path):
+            path = os.path.join(cls.PROJECT_ROOT, path)
+        return os.path.abspath(path)
 
     @classmethod
     def load_yaml(cls):
         """从 YAML 加载关键的 PD 参数、默认关节弧度与缩放因子"""
         with open(cls.YAML_PATH, "r") as f:
             config = yaml.load(f, Loader=yaml.FullLoader)
+
+        # 可选：从 YAML 覆盖 MuJoCo 场景与 ONNX 路径，方便对齐训练/部署
+        xml_path = config.get("xml_path")
+        if isinstance(xml_path, str) and xml_path:
+            cls.XML_PATH = cls._resolve_path(xml_path)
+
+        onnx_path = config.get("onnx_path")
+        if isinstance(onnx_path, str) and onnx_path.endswith(".onnx"):
+            cls.ONNX_PATH = cls._resolve_path(onnx_path)
 
         cls.kps = np.array(config["kps"], dtype=np.float32)
         cls.kds = np.array(config["kds"], dtype=np.float32)
@@ -142,8 +166,23 @@ def run_simulation():
     ort_session = ort.InferenceSession(Cfg.ONNX_PATH, providers=["CPUExecutionProvider"])
     input_name = ort_session.get_inputs()[0].name
 
+    # 关节索引（用名字映射，避免 XML/URDF 关节顺序差异引起 sim2sim 偏差）
+    def _name2id_checked(obj_type, name: str) -> int:
+        obj_id = mujoco.mj_name2id(model, obj_type, name)
+        if obj_id < 0:
+            raise KeyError(f"MuJoCo 中未找到 {obj_type.name}: {name}")
+        return obj_id
+
+    joint_ids = [_name2id_checked(mujoco.mjtObj.mjOBJ_JOINT, n) for n in Cfg.JOINT_NAMES]
+    qpos_idx = np.array([model.jnt_qposadr[jid] for jid in joint_ids], dtype=np.int32)
+    qvel_idx = np.array([model.jnt_dofadr[jid] for jid in joint_ids], dtype=np.int32)
+
+    actuator_ids = [_name2id_checked(mujoco.mjtObj.mjOBJ_ACTUATOR, n) for n in Cfg.JOINT_NAMES]
+    ctrl_range = model.actuator_ctrlrange[actuator_ids].copy()
+    tau_limit = np.maximum(np.abs(ctrl_range[:, 0]), np.abs(ctrl_range[:, 1])).astype(np.float32)
+
     # 初始化位置
-    data.qpos[-12:] = Cfg.default_dof_pos
+    data.qpos[qpos_idx] = Cfg.default_dof_pos
     data.qpos[2] = 0.15  # 初始化高度 (与训练 cfg.init_state.pos 对齐)
     mujoco.mj_forward(model, data)
     
@@ -154,11 +193,10 @@ def run_simulation():
     last_action = np.zeros(12, dtype=np.float32)
     target_dof_pos = Cfg.default_dof_pos.copy()
 
-    ctrl_range = model.actuator_ctrlrange.copy()
-    tau_limit = np.maximum(np.abs(ctrl_range[:, 0]), np.abs(ctrl_range[:, 1])).astype(np.float32)
-    
     print("\n✅ 启动成功！")
-    print("🎮 控制指南: [↑/↓] 前进后退 | [←/→] 左右转向 | [Shift + ←/→] 左右平移 | [空格] 停止")
+    policy_dt = Cfg.sim_dt * Cfg.decimation
+    print(f"⏱️ 时钟: sim_dt={Cfg.sim_dt:.6f}s, decimation={Cfg.decimation}, policy_dt={policy_dt:.6f}s (~{1.0/policy_dt:.1f}Hz)")
+    print("🎮 控制指南: [↑/↓] 前进后退 | [←/→] 左右转向 | [Shift + ←/→] 左右平移 | [Enter] 停止")
 
     step_counter = 0
     while viewer.is_alive:
@@ -167,11 +205,11 @@ def run_simulation():
         # 1. 更新按键指令
         cmd_vel = update_keyboard_command(viewer.window, cmd_vel)
 
-        # 2. 策略推理 (50Hz)
+        # 2. 策略推理 (policy_dt = sim_dt * decimation)
         if step_counter % Cfg.decimation == 0:
             # 构建 45 维观测向量
-            q = data.qpos[-12:].astype(np.float32)
-            dq = data.qvel[-12:].astype(np.float32)
+            q = data.qpos[qpos_idx].astype(np.float32)
+            dq = data.qvel[qvel_idx].astype(np.float32)
 
             quat = data.sensor("orientation").data[[1, 2, 3, 0]].astype(np.float32)
             omega = data.sensor("angular-velocity").data.astype(np.float32)
@@ -202,8 +240,8 @@ def run_simulation():
             target_dof_pos = scaled + Cfg.default_dof_pos
 
         # 3. PD 控制 (200Hz)
-        tau = Cfg.kps * (target_dof_pos - data.qpos[-12:]) - Cfg.kds * data.qvel[-12:]
-        data.ctrl[:] = np.clip(tau, -tau_limit, tau_limit)
+        tau = Cfg.kps * (target_dof_pos - data.qpos[qpos_idx]) - Cfg.kds * data.qvel[qvel_idx]
+        data.ctrl[actuator_ids] = np.clip(tau, -tau_limit, tau_limit)
 
         mujoco.mj_step(model, data)
         viewer.render()
