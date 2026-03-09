@@ -189,20 +189,37 @@ def export_policy_as_jit(actor_critic, path):
         traced_script_module = torch.jit.script(model)
         traced_script_module.save(path)
 
-def export_policy_as_onnx(actor_critic):
+def export_policy_as_onnx(actor_critic, path=None):
     model = copy.deepcopy(actor_critic.actor).to('cpu')
-    actor_input = torch.randn(1, 45)  # 根据实际情况调整形状
+    obs_dim = 45
+    try:
+        if hasattr(model, "__len__") and len(model) > 0 and hasattr(model[0], "in_features"):
+            obs_dim = int(model[0].in_features)
+    except Exception:
+        pass
+    actor_input = torch.zeros(1, obs_dim)
 
-    body_onnx_path = '/home/arx/isaac/legged_gym/onnx/' + 'legged.onnx'
-    paths = [body_onnx_path]
-    for path in paths:
-        if os.path.exists(path):
-            os.remove(path)
-            print(f"已删除: {path}")
-        else:
-            print(f"文件不存在: {path}")
-    print("path:",body_onnx_path)
-    torch.onnx.export(model, actor_input, body_onnx_path, opset_version=11)
+    if path is None:
+        target_dir = os.path.join(LEGGED_GYM_ROOT_DIR, "onnx")
+        os.makedirs(target_dir, exist_ok=True)
+        path = os.path.join(target_dir, "legged.onnx")
+    else:
+        dirname = os.path.dirname(path)
+        if dirname:
+            os.makedirs(dirname, exist_ok=True)
+
+    if os.path.exists(path):
+        os.remove(path)
+    print("Exporting ONNX to:", path)
+    torch.onnx.export(
+        model,
+        actor_input,
+        path,
+        opset_version=11,
+        input_names=["obs"],
+        output_names=["actions"],
+    )
+    return path
 class PolicyExporterLSTM(torch.nn.Module):
     def __init__(self, actor_critic):
         super().__init__()
