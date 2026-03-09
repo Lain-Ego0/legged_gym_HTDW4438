@@ -2,11 +2,11 @@
 <!-- 四足机器人URDF主文件 | 名称：htdw_4438 | 命名：fl前左/fr前右/rl后左/rr后右 | 肢体：hip髋/thigh大腿/calf小腿/foot脚 | 关节：revolute旋转/fixed固定 -->
 <robot name="htdw_4438">
   <mujoco>
-    <compiler 
-      meshdir="/home/sunteng/Documents/GitHub/Lain_isaacgym/resources/robots/htdw_4438/meshes" 
-      balanceinertia="true" 
-      discardvisual="false" />
-  </mujoco>
+	    <compiler 
+	      meshdir="../meshes" 
+	      balanceinertia="true" 
+	      discardvisual="false" />
+	  </mujoco>
   <!-- 全局复用材质：白色不透明 -->
   <material name="white_material">
     <color rgba="1 1 1 1" />
