@@ -1,5 +1,6 @@
 from isaacgym import gymtorch, gymapi
 # import isaac
+import os
 
 # 创建isaacgym API代理
 gym = gymapi.acquire_gym()
@@ -34,7 +35,9 @@ gym.add_ground(sim, plane_params) # 创建地面
 # asset_file = "grq20_v1d6.urdf" # 指定urdf目录
 # asset_root = "resources/robots/zsl1/urdf" # 指定机器人模型目录，用以搜索mesh等文件
 # asset_file = "DOG.urdf" # 指定urdf目录
-asset_root = "/home/sunteng/Documents/GitHub/Lain_isaacgym/resources/robots/htdw_4438/urdf" # 指定机器人模型目录，用以搜索mesh等文件
+this_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.abspath(os.path.join(this_dir, ".."))
+asset_root = os.path.join(project_root, "resources/robots/htdw_4438/urdf") # 指定机器人模型目录，用以搜索mesh等文件
 asset_file = "htdw_4438.urdf" # 指定urdf目录
 
 asset_options = gymapi.AssetOptions() 

@@ -2,8 +2,10 @@ import trimesh
 import os
 
 # 1. 设置文件路径 (请确保路径正确，或将脚本放在 STL 同目录下)
-input_file = '/home/sunteng/Documents/GitHub/Lain_isaacgym/resources/robots/htdw_4438/meshes/base_link.STL'
-output_file = '/home/sunteng/Documents/GitHub/Lain_isaacgym/resources/robots/htdw_4438/meshes/base_link_simple.STL'
+this_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.abspath(os.path.join(this_dir, ".."))
+input_file = os.path.join(project_root, "resources/robots/htdw_4438/meshes/base_link.STL")
+output_file = os.path.join(project_root, "resources/robots/htdw_4438/meshes/base_link_simple.STL")
 
 # 2. 加载模型
 mesh = trimesh.load_mesh(input_file)
