@@ -1,5 +1,5 @@
 # 策略文件路径，建议根据实际训练输出文件夹名称进行更新
-policy_path: "{LEGGED_GYM_ROOT_DIR}/logs/flat_htdw_4438/exported/policies/model_800.pt"
+# policy_path: "{LEGGED_GYM_ROOT_DIR}/logs/flat_htdw_4438/exported/policies/model_800.pt"
 # 可选：ONNX 策略路径（deploy_4438.py 使用 onnxruntime 推理；若不设置则用脚本内默认值）
 # onnx_path: "{LEGGED_GYM_ROOT_DIR}/onnx/your_policy.onnx"
 # 指向当前机器人的 MuJoCo XML 模型文件
@@ -11,7 +11,7 @@ simulation_duration: 60.0
 simulation_dt: 0.005
 # 控制降采样：policy_dt = simulation_dt * control_decimation
 # 需要与 legged_gym/envs/htdw_4438/htdw_4438_config.py 的 control.decimation 保持一致
-control_decimation: 2
+control_decimation: 4
 
 # 顺序为: [FL_hip, FL_thigh, FL_calf, FR_hip, FR_thigh, FR_calf, RL_hip, RL_thigh, RL_calf, RR_hip, RR_thigh, RR_calf]
 kps: [10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0] 

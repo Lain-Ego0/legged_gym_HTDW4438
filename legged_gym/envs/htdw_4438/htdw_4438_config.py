@@ -48,7 +48,7 @@ class Htdw4438Cfg(LeggedRobotCfg):
         stiffness = {'joint': 10.0} 
         damping = {'joint': 0.3}     
         action_scale = 0.25          
-        decimation = 2              # 200Hz Sim / 2 = 100Hz Policy
+        decimation = 4              # 200Hz Sim / 4 = 50Hz Policy
 
     # ==========================
     # 5. 指令 (Commands)
@@ -117,28 +117,28 @@ class Htdw4438Cfg(LeggedRobotCfg):
             tracking_ang_vel = 0.5          # 追踪角速度奖励
             lin_vel_z = -2.0                # 垂直速度惩罚（防止机器人向上跳）
             ang_vel_xy = -0.05              # 水平角速度惩罚（保持姿态稳定）
-            orientation = -1.3             # 机身方向惩罚（保持机身水平）
+            orientation = -1.0             # 机身方向惩罚（保持机身水平）
             dof_acc = -2.5e-7               # 关节加速度惩罚（平滑运动）
-            joint_power = -2e-5             # 关节功率惩罚（节省能量）
+            # joint_power = -2e-5             # 关节功率惩罚（节省能量）
 
             base_height = -1.0
-            # base_height_linear = -1.0        # 线性高度惩罚（保持目标高度）
-            default_pos_linear = -0.02        # 默认位置线性惩罚（回归初始姿态）
-            diagonal_sync = -0.1             # 对角线腿部同步惩罚（协调性）
-            hip_mirror_symmetry = -0.1      # 髋关节镜像对称惩罚
+            ## base_height_linear = -1.0        # 线性高度惩罚（保持目标高度）
+            # default_pos_linear = -0.02        # 默认位置线性惩罚（回归初始姿态）
+            # diagonal_sync = -0.1             # 对角线腿部同步惩罚（协调性）
+            # hip_mirror_symmetry = -0.1      # 髋关节镜像对称惩罚
 
-            foot_clearance = -0.0          # 脚部高度惩罚（防止拖脚）
+            # foot_clearance = -0.0          # 脚部高度惩罚（防止拖脚）
             action_rate = -0.01             # 动作变化率惩罚（平滑控制）
-            smoothness = -0.01              # 平滑度惩罚（流畅运动）
-            feet_air_time = 0.05             # 脚离地时间奖励（鼓励摆动腿抬起）
+            # smoothness = -0.01              # 平滑度惩罚（流畅运动）
+            # feet_air_time = 0.05             # 脚离地时间奖励（鼓励摆动腿抬起）
             feet_stumble = -0.0             # 脚绊倒惩罚（暂不使用）
-            stand_still = -1.0               # 静止状态惩罚
+            # stand_still = -1.0               # 静止状态惩罚
             torques = -0.0                  # 扭矩惩罚（暂不使用）
             dof_vel = -0.0                  # 关节速度惩罚（暂不使用）
             dof_pos_limits = -0.0           # 关节位置限制惩罚（暂不使用）
             dof_vel_limits = -0.0           # 关节速度限制惩罚（暂不使用）
             torque_limits = -0.0            # 扭矩限制惩罚（暂不使用）
-            collision = -1.0                # 碰撞惩罚（非脚部分碰撞给予惩罚）           
+            # collision = -1.0                # 碰撞惩罚（非脚部分碰撞给予惩罚）           
 
     # ==========================
     # 9. 归一化 (Normalization)

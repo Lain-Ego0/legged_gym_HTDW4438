@@ -20,10 +20,10 @@ class Cfg:
     MESHES_DIR = os.path.join(ROBOT_DIR, "meshes")
 
     YAML_PATH = os.path.join(PROJECT_ROOT, "deploy/deploy_mujoco/config/htdw_4438.yaml")
-    ONNX_PATH = os.path.join(PROJECT_ROOT, "onnx/htdw_4438_standard_20260227_153916_model_600.onnx")
+    ONNX_PATH = os.path.join(PROJECT_ROOT, "onnx/htdw_4438_standard_20260227_153916_model_600.onnx") # 请在此处而非yaml中修改
 
     sim_dt = 0.005              # 200Hz 物理步长
-    decimation = 2              # 100Hz 策略频率
+    decimation = 4              # 50Hz 策略频率
 
     # 必须与训练时 action/dof 的顺序一致
     JOINT_NAMES = [
@@ -142,7 +142,7 @@ def update_keyboard_command(window, cmd):
     if key_enter: cmd[:] = 0.0
     
     # 指令后处理：衰减与限幅
-    cmd[:] = np.clip(cmd * Cfg.vel_decay, -1.0, 1.5)
+    cmd[:] = np.clip(cmd * Cfg.vel_decay, -1.0, 1.0)
     if np.linalg.norm(cmd) < 0.01: cmd[:] = 0.0
     return cmd
 
