@@ -20,10 +20,6 @@ class Htdw4438Cfg(LeggedRobotCfg):
         mesh_type = 'plane'       # 训练初期用plane，后期改为 'trimesh' 进行崎岖地形训练
         # measure_heights = True    # 开启高度测量，以便填入观测向量的后 187 维
         measure_heights = False
-        
-
-
-
         # 地形参数继承自父类，如需调整可在此覆盖
         # static_friction = 1.0
         # dynamic_friction = 1.0
@@ -102,6 +98,20 @@ class Htdw4438Cfg(LeggedRobotCfg):
         randomize_motor_strength = True
         motor_strength_range = [0.9, 1.1] # 模拟电机力矩输出误差 (±10%)
 
+        # 关节 PD 参数随机化
+        randomize_kp = True
+        kp_range = [0.8, 1.2]
+        randomize_kd = True
+        kd_range = [0.8, 1.2]
+        
+        # 外力干扰 (Disturbance)
+        disturbance = True
+        disturbance_range = [-2.0, 2.0] 
+        disturbance_interval = 8
+        
+        # 延迟随机化 (模拟通信/计算延迟)
+        delay = True
+
     # ==========================
     # 8. 奖励函数 (Rewards)
     # ==========================
@@ -113,23 +123,23 @@ class Htdw4438Cfg(LeggedRobotCfg):
     
         class scales(LeggedRobotCfg.rewards.scales):
             termination = -0.0              # 终止条件惩罚
-            tracking_lin_vel = 1.0          # 追踪线速度奖励
+            tracking_lin_vel = 3.0          # 追踪线速度奖励
             tracking_ang_vel = 0.5          # 追踪角速度奖励
             lin_vel_z = -2.0                # 垂直速度惩罚（防止机器人向上跳）
             ang_vel_xy = -0.05              # 水平角速度惩罚（保持姿态稳定）
             orientation = -1.0             # 机身方向惩罚（保持机身水平）
             dof_acc = -2.5e-7               # 关节加速度惩罚（平滑运动）
-            # joint_power = -2e-5             # 关节功率惩罚（节省能量）
+            joint_power = -2e-5             # 关节功率惩罚（节省能量）
 
             base_height = -1.0
             ## base_height_linear = -1.0        # 线性高度惩罚（保持目标高度）
-            # default_pos_linear = -0.02        # 默认位置线性惩罚（回归初始姿态）
-            # diagonal_sync = -0.1             # 对角线腿部同步惩罚（协调性）
+            default_pos_linear = -0.05        # 默认位置线性惩罚（回归初始姿态）
+            diagonal_sync = -0.05             # 对角线腿部同步惩罚（协调性）
             # hip_mirror_symmetry = -0.1      # 髋关节镜像对称惩罚
 
-            # foot_clearance = -0.0          # 脚部高度惩罚（防止拖脚）
+            foot_clearance = -0.0          # 脚部高度惩罚（防止拖脚）
             action_rate = -0.01             # 动作变化率惩罚（平滑控制）
-            # smoothness = -0.01              # 平滑度惩罚（流畅运动）
+            smoothness = -0.01              # 平滑度惩罚（流畅运动）
             # feet_air_time = 0.05             # 脚离地时间奖励（鼓励摆动腿抬起）
             feet_stumble = -0.0             # 脚绊倒惩罚（暂不使用）
             # stand_still = -1.0               # 静止状态惩罚
@@ -138,7 +148,7 @@ class Htdw4438Cfg(LeggedRobotCfg):
             dof_pos_limits = -0.0           # 关节位置限制惩罚（暂不使用）
             dof_vel_limits = -0.0           # 关节速度限制惩罚（暂不使用）
             torque_limits = -0.0            # 扭矩限制惩罚（暂不使用）
-            # collision = -1.0                # 碰撞惩罚（非脚部分碰撞给予惩罚）           
+            collision = -1.0                # 碰撞惩罚（非脚部分碰撞给予惩罚）           
 
     # ==========================
     # 9. 归一化 (Normalization)

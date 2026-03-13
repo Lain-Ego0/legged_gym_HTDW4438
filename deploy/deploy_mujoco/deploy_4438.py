@@ -110,42 +110,6 @@ def load_model(xml_path, meshes_dir):
     return mujoco.MjModel.from_xml_string(content, assets=assets)
 
 
-def update_keyboard_command(window, cmd):
-    """
-    使用 glfw 直接读取按键，支持 Shift 组合键
-    cmd: [vx, vy, yaw_rate]
-    """
-    # 获取按键状态
-    key_up = glfw.get_key(window, glfw.KEY_UP) == glfw.PRESS
-    key_down = glfw.get_key(window, glfw.KEY_DOWN) == glfw.PRESS
-    key_left = glfw.get_key(window, glfw.KEY_LEFT) == glfw.PRESS
-    key_right = glfw.get_key(window, glfw.KEY_RIGHT) == glfw.PRESS
-    key_shift = (glfw.get_key(window, glfw.KEY_LEFT_SHIFT) == glfw.PRESS or 
-                 glfw.get_key(window, glfw.KEY_RIGHT_SHIFT) == glfw.PRESS)
-    key_enter = glfw.get_key(window, glfw.KEY_ENTER) == glfw.PRESS
-
-    # 1. 前后控制
-    if key_up:    cmd[0] += Cfg.vel_scales[0]
-    if key_down:  cmd[0] -= Cfg.vel_scales[0]
-    
-    # 2. 左右平移 vs 转向控制
-    if key_shift: # 开启平移模式
-        if key_left:  cmd[1] += Cfg.vel_scales[1]
-        if key_right: cmd[1] -= Cfg.vel_scales[1]
-        cmd[2] *= Cfg.vel_decay # 平移时减少转向指令
-    else:         # 开启转向模式
-        if key_left:  cmd[2] += Cfg.vel_scales[2]
-        if key_right: cmd[2] -= Cfg.vel_scales[2]
-        cmd[1] *= Cfg.vel_decay # 转向时减少平移指令
-
-    # 3. 停止逻辑
-    if key_enter: cmd[:] = 0.0
-    
-    # 指令后处理：衰减与限幅
-    cmd[:] = np.clip(cmd * Cfg.vel_decay, -1.0, 1.0)
-    if np.linalg.norm(cmd) < 0.01: cmd[:] = 0.0
-    return cmd
-
 def quat_rotate_inverse(q, v):
     """处理四元数旋转：World -> Body"""
     # q: [x, y, z, w] 与 IsaacGym/LeggedGym 一致
@@ -154,6 +118,57 @@ def quat_rotate_inverse(q, v):
     b = np.cross(q_vec, v) * q_w * 2.0
     c = q_vec * np.dot(q_vec, v) * 2.0
     return a - b + c
+
+def wrap_to_pi(x):
+    return (x + np.pi) % (2.0 * np.pi) - np.pi
+
+def quat_to_heading(q):
+    """从四元数 [x, y, z, w] 计算航向角（yaw）"""
+    x, y, z, w = q
+    forward_x = 1.0 - 2.0 * (y * y + z * z)
+    forward_y = 2.0 * (x * y + w * z)
+    return np.arctan2(forward_y, forward_x)
+
+def update_keyboard_heading_command(window, cmd_xy, heading_target, current_heading):
+    """
+    与训练语义对齐:
+    - 左右键(无Shift): 更新 heading_target
+    - 每步再由 heading_target 与当前 heading 计算 cmd_yaw
+    """
+    key_up = glfw.get_key(window, glfw.KEY_UP) == glfw.PRESS
+    key_down = glfw.get_key(window, glfw.KEY_DOWN) == glfw.PRESS
+    key_left = glfw.get_key(window, glfw.KEY_LEFT) == glfw.PRESS
+    key_right = glfw.get_key(window, glfw.KEY_RIGHT) == glfw.PRESS
+    key_shift = (glfw.get_key(window, glfw.KEY_LEFT_SHIFT) == glfw.PRESS or
+                 glfw.get_key(window, glfw.KEY_RIGHT_SHIFT) == glfw.PRESS)
+    key_enter = glfw.get_key(window, glfw.KEY_ENTER) == glfw.PRESS
+
+    if key_up:
+        cmd_xy[0] += Cfg.vel_scales[0]
+    if key_down:
+        cmd_xy[0] -= Cfg.vel_scales[0]
+
+    if key_shift:
+        if key_left:
+            cmd_xy[1] += Cfg.vel_scales[1]
+        if key_right:
+            cmd_xy[1] -= Cfg.vel_scales[1]
+    else:
+        if key_left:
+            heading_target += Cfg.vel_scales[2]
+        if key_right:
+            heading_target -= Cfg.vel_scales[2]
+        cmd_xy[1] *= Cfg.vel_decay
+
+    if key_enter:
+        cmd_xy[:] = 0.0
+        heading_target = current_heading
+
+    cmd_xy[:] = np.clip(cmd_xy * Cfg.vel_decay, -1.0, 1.0)
+    if np.linalg.norm(cmd_xy) < 0.01:
+        cmd_xy[:] = 0.0
+    heading_target = wrap_to_pi(heading_target)
+    return cmd_xy, heading_target
 
 # ===================== 3. 主循环 =====================
 def run_simulation():
@@ -189,21 +204,31 @@ def run_simulation():
     # 第三方 Viewer
     viewer = mujoco_viewer.MujocoViewer(model, data)
     
-    cmd_vel = Cfg.cmd_init.copy()
+    cmd_xy = Cfg.cmd_init[:2].copy()
+    heading_offset_init = float(Cfg.cmd_init[2]) if Cfg.cmd_init.shape[0] >= 3 else 0.0
+    heading_target = None
+    cmd_yaw = 0.0
     last_action = np.zeros(12, dtype=np.float32)
     target_dof_pos = Cfg.default_dof_pos.copy()
 
     print("\n✅ 启动成功！")
     policy_dt = Cfg.sim_dt * Cfg.decimation
     print(f"⏱️ 时钟: sim_dt={Cfg.sim_dt:.6f}s, decimation={Cfg.decimation}, policy_dt={policy_dt:.6f}s (~{1.0/policy_dt:.1f}Hz)")
-    print("🎮 控制指南: [↑/↓] 前进后退 | [←/→] 左右转向 | [Shift + ←/→] 左右平移 | [Enter] 停止")
+    print("🎮 控制指南: [↑/↓] 前进后退 | [←/→] 调整航向目标 | [Shift + ←/→] 左右平移 | [Enter] 停止")
 
     step_counter = 0
     while viewer.is_alive:
         step_start = time.time()
 
-        # 1. 更新按键指令
-        cmd_vel = update_keyboard_command(viewer.window, cmd_vel)
+        # 1. 更新按键指令（heading_command 语义）
+        base_quat = data.sensor("orientation").data[[1, 2, 3, 0]].astype(np.float32)
+        base_heading = quat_to_heading(base_quat)
+        if heading_target is None:
+            heading_target = wrap_to_pi(base_heading + heading_offset_init)
+        cmd_xy, heading_target = update_keyboard_heading_command(
+            viewer.window, cmd_xy, heading_target, base_heading
+        )
+        cmd_yaw = np.clip(0.5 * wrap_to_pi(heading_target - base_heading), -1.0, 1.0)
 
         # 2. 策略推理 (policy_dt = sim_dt * decimation)
         if step_counter % Cfg.decimation == 0:
@@ -219,7 +244,7 @@ def run_simulation():
                 [
                     omega * Cfg.ang_vel_scale,
                     proj_g,
-                    cmd_vel * Cfg.cmd_scale,
+                    np.array([cmd_xy[0], cmd_xy[1], cmd_yaw], dtype=np.float32) * Cfg.cmd_scale,
                     (q - Cfg.default_dof_pos) * Cfg.dof_pos_scale,
                     dq * Cfg.dof_vel_scale,
                     last_action,
